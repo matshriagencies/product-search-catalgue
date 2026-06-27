@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product catalog</title>
+<style>
+  :root{
+    --ink:#241c12;
+    --ink-soft:#6b5e4a;
+    --ink-faint:#a89a82;
+    --paper:#fbf7ef;
+    --card:#ffffff;
+    --line:#e7ddc9;
+    --accent:#b5532c;
+    --accent-soft:#f3e3d6;
+    --accent-deep:#8a3d1f;
+    --good:#3d6b3a;
+    --good-soft:#e3ecdf;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .app{max-width:1100px;margin:0 auto;padding:0 16px 64px;}
+
+  header.top{
+    position:sticky; top:0; z-index:30;
+    background:var(--paper);
+    padding:16px 0 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .max-wrap{max-width:1100px;margin:0 auto;padding:0 16px;}
+  header.top .max-wrap{padding:0;}
+
+  .brandrow{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:12px;}
+  .brandrow h1{font-size:19px; font-weight:700; margin:0; letter-spacing:-0.01em;}
+  .count-pill{font-size:12.5px; color:var(--ink-soft); background:var(--card); border:1px solid var(--line); padding:4px 10px; border-radius:999px; white-space:nowrap;}
+
+  .searchwrap{position:relative;}
+  .searchwrap svg{position:absolute; left:13px; top:50%; transform:translateY(-50%); width:18px; height:18px; stroke:var(--ink-faint);}
+  input[type="search"]{
+    width:100%; padding:13px 14px 13px 40px; font-size:16px;
+    border:1.5px solid var(--line); border-radius:12px;
+    background:var(--card); color:var(--ink);
+  }
+  input[type="search"]:focus{outline:none; border-color:var(--accent);}
+  input[type="search"]::-webkit-search-cancel-button{display:none;}
+  .clearbtn{
+    position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    background:none; border:none; color:var(--ink-faint); font-size:20px; line-height:1;
+    padding:6px; cursor:pointer; display:none;
+  }
+
+  .catbar{display:flex; gap:8px; overflow-x:auto; margin-top:12px; padding-bottom:2px; scrollbar-width:none;}
+  .catbar::-webkit-scrollbar{display:none;}
+  .catchip{
+    flex:0 0 auto; padding:7px 14px; border-radius:999px; font-size:13.5px;
+    border:1.5px solid var(--line); background:var(--card); color:var(--ink-soft);
+    cursor:pointer; white-space:nowrap; font-weight:500;
+  }
+  .catchip.active{background:var(--ink); border-color:var(--ink); color:#fff;}
+
+  .toolbar{display:flex; gap:10px; margin:14px 0 6px; flex-wrap:wrap;}
+  .btn{
+    appearance:none; border:1.5px solid var(--line); background:var(--card); color:var(--ink);
+    font-size:14px; font-weight:600; padding:10px 16px; border-radius:11px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:7px;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .btn-primary:hover{background:var(--accent-deep);}
+  .btn svg{width:16px; height:16px;}
+
+  #fileInput{display:none;}
+
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr));
+    gap:12px; margin-top:14px;
+  }
+  .pcard{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; cursor:pointer; transition:border-color .15s;
+    display:flex; flex-direction:column;
+  }
+  .pcard:hover{border-color:var(--ink-faint);}
+  .thumbwrap{aspect-ratio:1; background:#f1ece1; position:relative; overflow:hidden;}
+  .thumbwrap img{width:100%; height:100%; object-fit:cover; display:block;}
+  .imgcount{
+    position:absolute; bottom:6px; right:6px; background:rgba(36,28,18,0.72); color:#fff;
+    font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px;
+  }
+  .noimg{width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--ink-faint);}
+  .noimg svg{width:32px; height:32px;}
+  .pinfo{padding:9px 10px 11px;}
+  .pname{font-size:13.5px; font-weight:600; margin:0 0 2px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .pmeta{font-size:11.5px; color:var(--ink-faint); margin:0;}
+
+  .empty{
+    text-align:center; padding:64px 20px; color:var(--ink-soft);
+  }
+  .empty svg{width:48px; height:48px; stroke:var(--ink-faint); margin-bottom:14px;}
+  .empty h3{font-size:16px; margin:0 0 6px; color:var(--ink);}
+  .empty p{font-size:14px; margin:0 0 18px; max-width:320px; margin-left:auto; margin-right:auto;}
+
+  /* modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(36,28,18,0.55); z-index:100;
+    display:flex; align-items:flex-end; justify-content:center;
+  }
+  @media (min-width:640px){
+    .overlay{align-items:center;}
+  }
+  .modal{
+    background:var(--paper); width:100%; max-width:480px; max-height:92vh; overflow-y:auto;
+    border-radius:18px 18px 0 0; padding:20px 20px 28px;
+  }
+  @media (min-width:640px){
+    .modal{border-radius:18px;}
+  }
+  .modal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+  .modal-head h2{font-size:17px; margin:0;}
+  .xbtn{background:none; border:none; font-size:24px; color:var(--ink-soft); cursor:pointer; line-height:1; padding:4px;}
+
+  .detail-img{width:100%; aspect-ratio:1; object-fit:cover; border-radius:12px; background:#f1ece1; margin-bottom:10px;}
+  .detail-noimg{display:flex; align-items:center; justify-content:center; color:var(--ink-faint);}
+  .detail-noimg svg{width:40px; height:40px;}
+  .detail-name{font-size:19px; font-weight:700; margin:14px 0 4px;}
+  .detail-meta{font-size:14px; color:var(--ink-soft); margin:0 0 18px;}
+
+  .thumbstrip{display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; margin-bottom:4px;}
+  .thumbchip{
+    flex:0 0 auto; width:52px; height:52px; border-radius:8px; padding:0; overflow:hidden;
+    border:2px solid transparent; background:#f1ece1; cursor:pointer;
+  }
+  .thumbchip.active{border-color:var(--accent);}
+  .thumbchip img{width:100%; height:100%; object-fit:cover; display:block;}
+
+  .tagrow{display:flex; gap:6px; flex-wrap:wrap; margin:0 0 18px;}
+  .tag{
+    font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent-deep);
+  }
+  .tag-muted{background:var(--card); color:var(--ink-soft); border:1px solid var(--line);}
+
+  .actionrow{display:flex; gap:10px; margin-bottom:6px;}
+  .actionrow .btn{flex:1; justify-content:center; padding:13px;}
+
+  /* form */
+  label{font-size:13px; font-weight:600; color:var(--ink-soft); display:block; margin:14px 0 6px;}
+  label:first-of-type{margin-top:0;}
+  input[type="text"], select{
+    width:100%; padding:11px 12px; font-size:15px; border:1.5px solid var(--line);
+    border-radius:10px; background:var(--card); color:var(--ink);
+  }
+  input[type="text"]:focus, select:focus{outline:none; border-color:var(--accent);}
+
+  .imgpicker{
+    width:100%; aspect-ratio:1; max-width:220px; border:2px dashed var(--line); border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    cursor:pointer; color:var(--ink-faint); background:var(--card); position:relative; overflow:hidden;
+  }
+  .imgpicker img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;}
+  .imgpicker svg{width:28px; height:28px;}
+  .imgpicker span{font-size:12.5px; font-weight:600;}
+
+  .photogrid{display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;}
+  .photothumb{position:relative; aspect-ratio:1; border-radius:12px; overflow:hidden; background:#f1ece1;}
+  .photothumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .photoremove{
+    position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%;
+    background:rgba(36,28,18,0.75); color:#fff; border:none; font-size:15px; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .imgpicker-add{aspect-ratio:1; max-width:none; padding:0; gap:4px;}
+  .imgpicker-add svg{width:22px; height:22px;}
+  .imgpicker-add span{font-size:11px;}
+
+  .catcheckbox-list{display:flex; flex-wrap:wrap; gap:8px;}
+  .catcheck{
+    display:flex; align-items:center; gap:6px; padding:7px 12px; border-radius:999px;
+    border:1.5px solid var(--line); background:var(--card); cursor:pointer; font-size:13.5px; font-weight:500;
+  }
+  .catcheck input{margin:0; accent-color:var(--accent);}
+  .catcheck:has(input:checked){border-color:var(--accent); background:var(--accent-soft); color:var(--accent-deep);}
+
+  .formrow{display:flex; gap:10px;}
+  .formrow > div{flex:1;}
+
+  .save-bar{display:flex; gap:10px; margin-top:22px;}
+  .save-bar .btn{flex:1; justify-content:center;}
+
+  .danger-link{
+    background:none; border:none; color:#a32d2d; font-size:13.5px; font-weight:600;
+    cursor:pointer; padding:10px 0; margin-top:4px; display:inline-flex; align-items:center; gap:6px;
+  }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:11px 20px; border-radius:999px;
+    font-size:13.5px; font-weight:600; z-index:200; opacity:0; transition:opacity .25s;
+    pointer-events:none; white-space:nowrap;
+  }
+  .toast.show{opacity:1;}
+
+  .loading-state{text-align:center; padding:60px 20px; color:var(--ink-faint); font-size:14px;}
+  .new-cat-row{display:flex; gap:8px; margin-top:6px;}
+  .new-cat-row input{flex:1;}
+  .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);}
+</style>
+</head>
+<body>
+<h1 class="sr-only">Product photo catalog — search and share product images to WhatsApp</h1>
+
+<header class="top">
+  <div class="max-wrap">
+    <div class="brandrow">
+      <h1>Product catalog</h1>
+      <span class="count-pill" id="countPill">0 products</span>
+    </div>
+    <div class="searchwrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="searchBox" placeholder="Search by name or code">
+      <button class="clearbtn" id="clearSearch">&times;</button>
+    </div>
+    <div class="catbar" id="catBar"></div>
+  </div>
+</header>
+
+<div class="app">
+  <div class="toolbar">
+    <button class="btn btn-primary" id="addBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add product
+    </button>
+    <button class="btn" id="manageCats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+      Categories
+    </button>
+    <button class="btn" id="settingsBtn" style="margin-left:auto; flex:0 0 auto; padding:10px 12px;" aria-label="Connection settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009.6 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9.6a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.21.43.6.74 1.06.9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
+  </div>
+
+  <div id="mainArea">
+    <div class="loading-state">Loading your catalog…</div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" multiple>
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const state = {
+  products: {},
+  categories: ["Uncategorized"],
+  search: "",
+  activeCat: "All",
+  pendingImageData: null,
+  editingId: null
+};
+
+function uid(){ return 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+// ---------- storage ----------
+// Talks to a Google Apps Script Web App backed by a Google Sheet.
+// This makes phone and computer share the same data automatically,
+// since both just call the same URL over the internet.
+const SCRIPT_URL_KEY = 'product_catalog_script_url';
+
+function getScriptUrl(){
+  return localStorage.getItem(SCRIPT_URL_KEY) || '';
+}
+function setScriptUrl(url){
+  localStorage.setItem(SCRIPT_URL_KEY, url);
+}
+
+async function apiGet(){
+  const url = getScriptUrl();
+  if(!url) throw new Error('NO_URL');
+  const res = await fetch(url + '?action=list');
+  if(!res.ok) throw new Error('Request failed: ' + res.status);
+  return await res.json();
+}
+
+async function apiPost(payload){
+  const url = getScriptUrl();
+  if(!url) throw new Error('NO_URL');
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  if(!res.ok) throw new Error('Request failed: ' + res.status);
+  return await res.json();
+}
+
+async function loadAll(){
+  if(!getScriptUrl()){
+    showSetupScreen();
+    return;
+  }
+  try{
+    const data = await apiGet();
+    const products = {};
+    for(const p of (data.products || [])){
+      if(p && p.id) products[p.id] = p;
+    }
+    state.products = products;
+    state.categories = (data.categories && data.categories.length) ? data.categories : ["Uncategorized"];
+    render();
+  }catch(e){
+    showConnectionError(e);
+  }
+}
+
+async function saveProduct(p){
+  try{
+    await apiPost({ action: 'saveProduct', product: p });
+    state.products[p.id] = p;
+  }catch(e){
+    showToast("Could not save — check your connection and try again");
+    throw e;
+  }
+}
+
+async function deleteProductStorage(id){
+  try{
+    await apiPost({ action: 'deleteProduct', id: id });
+  }catch(e){
+    showToast("Could not delete — check your connection and try again");
+  }
+  delete state.products[id];
+}
+
+async function saveCategories(){
+  try{
+    await apiPost({ action: 'saveCategories', categories: state.categories });
+  }catch(e){
+    showToast("Could not save categories — check your connection");
+  }
+}
+
+function showSetupScreen(){
+  const main = document.getElementById('mainArea');
+  main.innerHTML = `
+    <div class="empty" style="max-width:440px; margin:0 auto;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+      <h3>Connect your Google Sheet</h3>
+      <p>Paste the Web App URL from your Apps Script deployment to link this catalog to your sheet.</p>
+      <input type="text" id="setupUrlInput" placeholder="https://script.google.com/macros/s/.../exec" style="margin-bottom:12px;">
+      <button class="btn btn-primary" id="setupConnectBtn" style="width:100%; justify-content:center;">Connect</button>
+    </div>`;
+  document.getElementById('setupConnectBtn').addEventListener('click', async ()=>{
+    const val = document.getElementById('setupUrlInput').value.trim();
+    if(!val.startsWith('https://script.google.com/')){
+      showToast('That doesn\u2019t look like a script.google.com URL');
+      return;
+    }
+    setScriptUrl(val);
+    main.innerHTML = `<div class="loading-state">Connecting…</div>`;
+    loadAll();
+  });
+}
+
+function showConnectionError(e){
+  const main = document.getElementById('mainArea');
+  main.innerHTML = `
+    <div class="empty" style="max-width:440px; margin:0 auto;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <h3>Couldn't connect</h3>
+      <p>Check your internet connection, or the Google Sheet link may need to be reconnected.</p>
+      <button class="btn" id="retryBtn">Try again</button>
+      <button class="btn" id="reconnectBtn" style="margin-top:8px;">Use a different sheet link</button>
+    </div>`;
+  document.getElementById('retryBtn').addEventListener('click', ()=>{
+    main.innerHTML = `<div class="loading-state">Connecting…</div>`;
+    loadAll();
+  });
+  document.getElementById('reconnectBtn').addEventListener('click', ()=>{
+    setScriptUrl('');
+    showSetupScreen();
+  });
+}
+
+// ---------- rendering ----------
+function renderCatBar(){
+  const bar = document.getElementById('catBar');
+  const cats = ["All", ...state.categories];
+  bar.innerHTML = cats.map(c => `<button class="catchip${c===state.activeCat?' active':''}" data-cat="${escapeAttr(c)}">${escapeHtml(c)}</button>`).join('');
+  bar.querySelectorAll('.catchip').forEach(el=>{
+    el.addEventListener('click', ()=>{ state.activeCat = el.dataset.cat; renderCatBar(); renderGrid(); });
+  });
+}
+
+function getProductCategories(p){
+  if(Array.isArray(p.categories) && p.categories.length) return p.categories;
+  if(p.category) return [p.category];
+  return ['Uncategorized'];
+}
+function getProductImages(p){
+  if(Array.isArray(p.images) && p.images.length) return p.images;
+  if(p.image) return [p.image];
+  return [];
+}
+
+function getFiltered(){
+  const q = state.search.trim().toLowerCase();
+  return Object.values(state.products).filter(p=>{
+    if(state.activeCat !== "All" && !getProductCategories(p).includes(state.activeCat)) return false;
+    if(!q) return true;
+    return (p.name||'').toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q);
+  }).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+}
+
+function renderGrid(){
+  const main = document.getElementById('mainArea');
+  const list = getFiltered();
+  document.getElementById('countPill').textContent = Object.keys(state.products).length + (Object.keys(state.products).length===1 ? ' product' : ' products');
+
+  if(Object.keys(state.products).length === 0){
+    main.innerHTML = `
+      <div class="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <h3>No products yet</h3>
+        <p>Add your first product photo to start building your catalog.</p>
+      </div>`;
+    main.querySelector('.empty');
+    return;
+  }
+
+  if(list.length === 0){
+    main.innerHTML = `
+      <div class="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <h3>No matches</h3>
+        <p>Try a different name, code, or category.</p>
+      </div>`;
+    return;
+  }
+
+  main.innerHTML = `<div class="grid">${list.map(p => {
+    const imgs = getProductImages(p);
+    const cats = getProductCategories(p);
+    return `
+    <div class="pcard" data-id="${escapeAttr(p.id)}">
+      <div class="thumbwrap">
+        ${imgs.length ? `<img src="${imgs[0]}" alt="${escapeAttr(p.name)}">` : `<div class="noimg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>`}
+        ${imgs.length > 1 ? `<span class="imgcount">${imgs.length} photos</span>` : ''}
+      </div>
+      <div class="pinfo">
+        <p class="pname">${escapeHtml(p.name || 'Unnamed product')}</p>
+        <p class="pmeta">${escapeHtml(p.code ? p.code : cats.join(', '))}</p>
+      </div>
+    </div>
+  `;
+  }).join('')}</div>`;
+
+  main.querySelectorAll('.pcard').forEach(el=>{
+    el.addEventListener('click', ()=> openDetail(el.dataset.id));
+  });
+}
+
+function render(){
+  renderCatBar();
+  renderGrid();
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+// ---------- detail modal ----------
+function openDetail(id){
+  const p = state.products[id];
+  if(!p) return;
+  const canShareFiles = !!(navigator.canShare && navigator.share);
+  const imgs = getProductImages(p);
+  const cats = getProductCategories(p);
+  let activeImgIdx = 0;
+
+  const root = document.getElementById('modalRoot');
+
+  function renderDetailBody(){
+    root.innerHTML = `
+    <div class="overlay" id="ovDetail">
+      <div class="modal">
+        <div class="modal-head">
+          <h2>Product</h2>
+          <button class="xbtn" id="closeDetail">&times;</button>
+        </div>
+        ${imgs.length
+          ? `<img class="detail-img" id="mainDetailImg" src="${imgs[activeImgIdx]}" alt="${escapeAttr(p.name)}">`
+          : `<div class="detail-img detail-noimg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>`}
+        ${imgs.length > 1 ? `<div class="thumbstrip">${imgs.map((src,i)=>`<button class="thumbchip${i===activeImgIdx?' active':''}" data-imgidx="${i}"><img src="${src}" alt=""></button>`).join('')}</div>` : ''}
+        <p class="detail-name">${escapeHtml(p.name || 'Unnamed product')}</p>
+        <div class="tagrow">${cats.map(c=>`<span class="tag">${escapeHtml(c)}</span>`).join('')}${p.code ? `<span class="tag tag-muted">Code ${escapeHtml(p.code)}</span>` : ''}</div>
+        <div class="actionrow">
+          ${canShareFiles ? `
+          <button class="btn btn-primary" id="shareBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            ${imgs.length > 1 ? 'Share photo' : 'Share to WhatsApp'}
+          </button>
+          <button class="btn" id="downloadBtn" style="flex:0 0 auto; padding:13px 16px;" aria-label="Save image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          ` : `
+          <button class="btn btn-primary" id="downloadBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Save image
+          </button>
+          `}
+        </div>
+        ${imgs.length > 1 ? `<p style="font-size:12px; color:var(--ink-faint); margin:-4px 0 14px;">Sharing the photo shown above. Tap a thumbnail to pick a different one.</p>` : ''}
+        ${!canShareFiles ? `<p style="font-size:12.5px; color:var(--ink-faint); margin:-2px 0 14px;">Open this catalog on your phone to share straight to WhatsApp. On a computer, save the image then attach it in WhatsApp Web.</p>` : ''}
+        <button class="btn" id="editBtn" style="width:100%; justify-content:center; margin-top:4px;">Edit details</button>
+        <button class="danger-link" id="deleteBtn">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+          Delete product
+        </button>
+      </div>
+    </div>`;
+
+    document.getElementById('closeDetail').addEventListener('click', closeModal);
+    document.getElementById('ovDetail').addEventListener('click', (e)=>{ if(e.target.id==='ovDetail') closeModal(); });
+    document.getElementById('editBtn').addEventListener('click', ()=> openForm(id));
+    document.getElementById('deleteBtn').addEventListener('click', async ()=>{
+      if(confirm('Delete this product? This cannot be undone.')){
+        await deleteProductStorage(id);
+        closeModal();
+        render();
+        showToast('Product deleted');
+      }
+    });
+    root.querySelectorAll('.thumbchip').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        activeImgIdx = parseInt(btn.dataset.imgidx, 10);
+        renderDetailBody();
+      });
+    });
+    document.getElementById('downloadBtn').addEventListener('click', ()=>{
+      if(!imgs.length){ showToast('No photo to save'); return; }
+      const a = document.createElement('a');
+      a.href = imgs[activeImgIdx];
+      a.download = (p.name || 'product').replace(/[^a-z0-9]+/gi,'_') + '_' + (activeImgIdx+1) + '.jpg';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('Image saved');
+    });
+    if(canShareFiles){
+      document.getElementById('shareBtn').addEventListener('click', async ()=>{
+        if(!imgs.length){ showToast('No photo to share'); return; }
+        try{
+          const blob = await (await fetch(imgs[activeImgIdx])).blob();
+          const file = new File([blob], (p.name||'product').replace(/[^a-z0-9]+/gi,'_') + '.jpg', { type: blob.type || 'image/jpeg' });
+          if(navigator.canShare({ files:[file] })){
+            await navigator.share({ files:[file], title: p.name || 'Product' });
+          } else {
+            showToast("This browser can't share images directly — try Save instead");
+          }
+        }catch(e){
+          if(e.name !== 'AbortError'){
+            showToast("Couldn't open share sheet — try Save instead");
+          }
+        }
+      });
+    }
+  }
+
+  renderDetailBody();
+}
+
+function closeModal(){
+  document.getElementById('modalRoot').innerHTML = '';
+}
+
+// ---------- add / edit form ----------
+function openForm(editId){
+  state.editingId = editId || null;
+  const p = editId ? state.products[editId] : null;
+  state.pendingImages = p ? getProductImages(p).slice() : [];
+  let selectedCats = p ? getProductCategories(p).slice() : [];
+
+  const root = document.getElementById('modalRoot');
+
+  function renderPhotoGrid(){
+    const grid = document.getElementById('photoGrid');
+    if(!grid) return;
+    grid.innerHTML = state.pendingImages.map((src,i)=>`
+      <div class="photothumb">
+        <img src="${src}" alt="">
+        <button type="button" class="photoremove" data-rmidx="${i}" aria-label="Remove photo">&times;</button>
+      </div>
+    `).join('') + `
+      <div class="imgpicker imgpicker-add" id="imgPickerAdd">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>Add photo</span>
+      </div>
+    `;
+    grid.querySelectorAll('[data-rmidx]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        state.pendingImages.splice(parseInt(btn.dataset.rmidx,10), 1);
+        renderPhotoGrid();
+      });
+    });
+    document.getElementById('imgPickerAdd').addEventListener('click', ()=>{
+      document.getElementById('fileInput').click();
+    });
+  }
+  window.__rerenderPhotoGrid = renderPhotoGrid;
+
+  function renderCatCheckboxes(){
+    const box = document.getElementById('catCheckboxes');
+    box.innerHTML = state.categories.map(c=>`
+      <label class="catcheck">
+        <input type="checkbox" value="${escapeAttr(c)}" ${selectedCats.includes(c) ? 'checked' : ''}>
+        <span>${escapeHtml(c)}</span>
+      </label>
+    `).join('');
+    box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+      cb.addEventListener('change', ()=>{
+        if(cb.checked){
+          if(!selectedCats.includes(cb.value)) selectedCats.push(cb.value);
+        } else {
+          selectedCats = selectedCats.filter(c=>c!==cb.value);
+        }
+      });
+    });
+  }
+
+  root.innerHTML = `
+    <div class="overlay" id="ovForm">
+      <div class="modal">
+        <div class="modal-head">
+          <h2>${editId ? 'Edit product' : 'Add product'}</h2>
+          <button class="xbtn" id="closeForm">&times;</button>
+        </div>
+
+        <label>Photos</label>
+        <div class="photogrid" id="photoGrid"></div>
+
+        <label for="fName">Product name</label>
+        <input type="text" id="fName" placeholder="e.g. Blue checked kurta" value="${p ? escapeAttr(p.name) : ''}">
+
+        <label for="fCode">Code / SKU <span style="font-weight:400;color:var(--ink-faint)">(optional)</span></label>
+        <input type="text" id="fCode" placeholder="e.g. 245" value="${p ? escapeAttr(p.code||'') : ''}">
+
+        <label>Categories <span style="font-weight:400;color:var(--ink-faint)">(select one or more)</span></label>
+        <div class="catcheckbox-list" id="catCheckboxes"></div>
+        <div class="new-cat-row">
+          <input type="text" id="newCatInline" placeholder="Add a new category">
+          <button class="btn" id="addCatInlineBtn" style="flex:0 0 auto;">Add</button>
+        </div>
+
+        <div class="save-bar">
+          <button class="btn" id="cancelForm" style="flex:0 0 auto; padding:11px 18px;">Cancel</button>
+          <button class="btn btn-primary" id="saveForm">Save product</button>
+        </div>
+      </div>
+    </div>`;
+
+  renderPhotoGrid();
+  renderCatCheckboxes();
+
+  document.getElementById('closeForm').addEventListener('click', closeModal);
+  document.getElementById('cancelForm').addEventListener('click', closeModal);
+  document.getElementById('ovForm').addEventListener('click', (e)=>{ if(e.target.id==='ovForm') closeModal(); });
+
+  document.getElementById('addCatInlineBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('newCatInline');
+    const val = input.value.trim();
+    if(val && !state.categories.includes(val)){
+      state.categories.push(val);
+      selectedCats.push(val);
+      input.value = '';
+      renderCatCheckboxes();
+    }
+  });
+
+  document.getElementById('saveForm').addEventListener('click', async ()=>{
+    const name = document.getElementById('fName').value.trim();
+    if(!name){ showToast('Enter a product name'); return; }
+    const code = document.getElementById('fCode').value.trim();
+    const categories = selectedCats.length ? selectedCats : ['Uncategorized'];
+
+    const product = {
+      id: editId || uid(),
+      name, code,
+      categories,
+      images: state.pendingImages.slice(),
+      updatedAt: Date.now()
+    };
+    await saveCategories();
+    await saveProduct(product);
+    closeModal();
+    render();
+    showToast(editId ? 'Product updated' : 'Product added');
+  });
+}
+
+// image file handling: resize/compress before storing, supports multiple files
+document.getElementById('fileInput').addEventListener('change', (e)=>{
+  const files = Array.from(e.target.files || []);
+  if(!files.length) return;
+  let remaining = files.length;
+  files.forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxDim = 900;
+        let w = img.width, h = img.height;
+        if(w > h && w > maxDim){ h = Math.round(h * maxDim/w); w = maxDim; }
+        else if(h > maxDim){ w = Math.round(w * maxDim/h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        state.pendingImages.push(dataUrl);
+        remaining--;
+        if(remaining === 0 && window.__rerenderPhotoGrid){
+          window.__rerenderPhotoGrid();
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+});
+
+// ---------- category manager ----------
+function openCatManager(){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+    <div class="overlay" id="ovCat">
+      <div class="modal">
+        <div class="modal-head">
+          <h2>Categories</h2>
+          <button class="xbtn" id="closeCat">&times;</button>
+        </div>
+        <div id="catList"></div>
+        <label>Add category</label>
+        <div class="new-cat-row">
+          <input type="text" id="newCatInput" placeholder="e.g. Footwear">
+          <button class="btn" id="addCatBtn" style="flex:0 0 auto;">Add</button>
+        </div>
+      </div>
+    </div>`;
+
+  function renderCatList(){
+    const list = document.getElementById('catList');
+    list.innerHTML = state.categories.map(c=>{
+      const countInUse = Object.values(state.products).filter(p=>getProductCategories(p).includes(c)).length;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--line);">
+        <span style="font-size:14.5px;">${escapeHtml(c)} <span style="color:var(--ink-faint);font-size:12.5px;">(${countInUse})</span></span>
+        ${state.categories.length>1 ? `<button class="xbtn" data-rm="${escapeAttr(c)}" style="font-size:18px;">&times;</button>` : ''}
+      </div>`;
+    }).join('');
+    list.querySelectorAll('[data-rm]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const cat = btn.dataset.rm;
+        if(confirm(`Remove "${cat}"? Products only in this category will move to "${state.categories.find(c=>c!==cat)}".`)){
+          const fallback = state.categories.find(c=>c!==cat);
+          for(const p of Object.values(state.products)){
+            const cats = getProductCategories(p);
+            if(cats.includes(cat)){
+              let next = cats.filter(c=>c!==cat);
+              if(next.length === 0) next = [fallback];
+              p.categories = next;
+              await saveProduct(p);
+            }
+          }
+          state.categories = state.categories.filter(c=>c!==cat);
+          await saveCategories();
+          renderCatList();
+          render();
+        }
+      });
+    });
+  }
+  renderCatList();
+
+  document.getElementById('closeCat').addEventListener('click', closeModal);
+  document.getElementById('ovCat').addEventListener('click', (e)=>{ if(e.target.id==='ovCat') closeModal(); });
+  document.getElementById('addCatBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('newCatInput');
+    const val = input.value.trim();
+    if(val && !state.categories.includes(val)){
+      state.categories.push(val);
+      await saveCategories();
+      input.value = '';
+      renderCatList();
+      renderCatBar();
+    }
+  });
+}
+
+// ---------- wiring ----------
+document.getElementById('addBtn').addEventListener('click', ()=> openForm(null));
+document.getElementById('manageCats').addEventListener('click', openCatManager);
+document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
+
+function openSettingsModal(){
+  const root = document.getElementById('modalRoot');
+  const current = getScriptUrl();
+  root.innerHTML = `
+    <div class="overlay" id="ovSettings">
+      <div class="modal">
+        <div class="modal-head">
+          <h2>Connection</h2>
+          <button class="xbtn" id="closeSettings">&times;</button>
+        </div>
+        <label>Connected Google Sheet link</label>
+        <input type="text" id="settingsUrlInput" value="${escapeAttr(current)}" placeholder="https://script.google.com/macros/s/.../exec">
+        <div class="save-bar">
+          <button class="btn btn-primary" id="settingsSaveBtn">Save and reconnect</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('closeSettings').addEventListener('click', closeModal);
+  document.getElementById('ovSettings').addEventListener('click', (e)=>{ if(e.target.id==='ovSettings') closeModal(); });
+  document.getElementById('settingsSaveBtn').addEventListener('click', ()=>{
+    const val = document.getElementById('settingsUrlInput').value.trim();
+    if(val && !val.startsWith('https://script.google.com/')){
+      showToast('That doesn\u2019t look like a script.google.com URL');
+      return;
+    }
+    setScriptUrl(val);
+    closeModal();
+    document.getElementById('mainArea').innerHTML = `<div class="loading-state">Connecting…</div>`;
+    loadAll();
+  });
+}
+
+const searchBox = document.getElementById('searchBox');
+const clearBtn = document.getElementById('clearSearch');
+searchBox.addEventListener('input', ()=>{
+  state.search = searchBox.value;
+  clearBtn.style.display = state.search ? 'block' : 'none';
+  renderGrid();
+});
+clearBtn.addEventListener('click', ()=>{
+  searchBox.value = '';
+  state.search = '';
+  clearBtn.style.display = 'none';
+  renderGrid();
+  searchBox.focus();
+});
+
+loadAll();
+</script>
+</body>
+</html>
